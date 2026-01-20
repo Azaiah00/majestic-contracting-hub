@@ -20,8 +20,8 @@ export const metadata: Metadata = {
   description: 'High-performance lead generation and nurturing hub for Majestic Contracting - Design | Build | Renovate',
   keywords: ['construction', 'contracting', 'leads', 'CRM', 'Virginia'],
   icons: {
-    icon: '/favicon-1.png',
-    shortcut: '/favicon-1.png',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
     apple: '/favicon-1.png',
   },
 };
