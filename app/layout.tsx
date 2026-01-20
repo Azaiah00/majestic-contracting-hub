@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: 'Majestic Command Center | Lead Intelligence Hub',
   description: 'High-performance lead generation and nurturing hub for Majestic Contracting - Design | Build | Renovate',
   keywords: ['construction', 'contracting', 'leads', 'CRM', 'Virginia'],
+  icons: {
+    icon: '/favicon-1.png',
+    shortcut: '/favicon-1.png',
+    apple: '/favicon-1.png',
+  },
 };
 
 /**
