@@ -82,6 +82,16 @@ export default function DashboardPage() {
   const totalValue = activeLeads.reduce((sum, l) => sum + (l.estimatedValue || 0), 0);
   const epicLeads = activeLeads.filter(l => l.serviceTier === ServiceTier.EPIC);
   
+  // Format pipeline value nicely
+  const formatPipelineValue = (value: number): string => {
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(0)}k`;
+    }
+    return `$${value.toLocaleString()}`;
+  };
+  
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -101,7 +111,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Pipeline Value"
-          value={`$${(totalValue / 1000).toFixed(0)}k`}
+          value={formatPipelineValue(totalValue)}
           change="+8%"
           changeType="up"
           icon={DollarSign}
