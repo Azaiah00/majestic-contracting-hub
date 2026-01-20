@@ -20,8 +20,11 @@ export const metadata: Metadata = {
   description: 'High-performance lead generation and nurturing hub for Majestic Contracting - Design | Build | Renovate',
   keywords: ['construction', 'contracting', 'leads', 'CRM', 'Virginia'],
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
+    icon: [
+      { url: '/favicon-2.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-2.png', sizes: '16x16', type: 'image/png' },
+    ],
+    shortcut: '/favicon-2.png',
     apple: '/favicon-2.png',
   },
 };
@@ -38,8 +41,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/favicon-2.png" type="image/png" />
+        <link rel="icon" href="/favicon-2.png" type="image/png" sizes="32x32" />
+        <link rel="shortcut icon" href="/favicon-2.png" />
       </head>
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased`}
