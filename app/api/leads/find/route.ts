@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { checkDuplicateLead } from '@/lib/leads/duplicate-check';
 import { assignLeadTags, type LeadTag } from '@/lib/leads/tagging';
-import { isVirginiaZipCode, getCountyFromZip } from '@/lib/leads/validation';
+import { isVirginiaZipCode, getCountyFromZip, VA_COUNTY_NAMES } from '@/lib/leads/validation';
 import { calculateLeadScore } from '@/lib/leads/scoring';
 import { SERVICE_TO_TIER, findClosestService } from '@/lib/leads/categorization';
 import { ServiceTier, type ServiceType } from '@/types/lead';
@@ -67,58 +67,102 @@ interface FindLeadsRequest {
   city: string;
   category: string;
   leadCount?: number;
+  locationType?: 'city' | 'county';
 }
 
 /**
  * VA-Only Validator Middleware.
- * Ensures the city is within Virginia.
+ * Ensures the location is within Virginia (city or county).
  */
-function validateVirginiaCity(city: string): { valid: boolean; normalizedCity: string | null } {
-  const normalized = city.trim();
-  
-  // Check if city is in our VA cities list (case-insensitive)
+function normalizeCountyInput(input: string): string {
+  // Remove "County" suffix so we can match consistently.
+  return input.replace(/county/gi, '').trim();
+}
+
+function formatCountyDisplay(county: string): string {
+  return `${county} County`;
+}
+
+function validateVirginiaLocation(
+  location: string,
+  locationType: 'city' | 'county'
+): { valid: boolean; normalizedLocation: string | null } {
+  const normalized = location.trim();
+
+  if (locationType === 'county') {
+    const cleaned = normalizeCountyInput(normalized);
+
+    // Check if county is in our VA county list (case-insensitive)
+    const match = VA_COUNTY_NAMES.find(
+      c => c.toLowerCase() === cleaned.toLowerCase()
+    );
+
+    if (match) {
+      return { valid: true, normalizedLocation: formatCountyDisplay(match) };
+    }
+
+    // Try partial match
+    const partialMatch = VA_COUNTY_NAMES.find(
+      c => c.toLowerCase().includes(cleaned.toLowerCase()) ||
+           cleaned.toLowerCase().includes(c.toLowerCase())
+    );
+
+    if (partialMatch) {
+      return { valid: true, normalizedLocation: formatCountyDisplay(partialMatch) };
+    }
+
+    return { valid: false, normalizedLocation: null };
+  }
+
+  // City validation (case-insensitive)
   const match = VA_CITIES.find(
     c => c.toLowerCase() === normalized.toLowerCase()
   );
-  
+
   if (match) {
-    return { valid: true, normalizedCity: match };
+    return { valid: true, normalizedLocation: match };
   }
-  
+
   // Try partial match
   const partialMatch = VA_CITIES.find(
     c => c.toLowerCase().includes(normalized.toLowerCase()) ||
          normalized.toLowerCase().includes(c.toLowerCase())
   );
-  
+
   if (partialMatch) {
-    return { valid: true, normalizedCity: partialMatch };
+    return { valid: true, normalizedLocation: partialMatch };
   }
-  
-  return { valid: false, normalizedCity: null };
+
+  return { valid: false, normalizedLocation: null };
 }
 
 /**
  * Build the Gemini prompt for lead discovery.
  */
-function buildLeadFinderPrompt(city: string, category: string, count: number): string {
+function buildLeadFinderPrompt(
+  location: string,
+  category: string,
+  count: number,
+  locationType: 'city' | 'county'
+): string {
   return `Act as a High-End Construction Lead Researcher for Majestic Contracting, a Design | Build | Renovate company serving Virginia.
 
-MISSION: Find ${count} potential leads in ${city}, Virginia who likely need ${category} services.
+MISSION: Find ${count} potential leads in ${location}, Virginia who likely need ${category} services.
+LOCATION TYPE: ${locationType} (city or county)
 
 TARGET DEMAND SIGNALS - Search for these types of entities:
-1. Property Managers/Landlords with multiple rental units in ${city}, VA
-2. Local Real Estate Investors/Flippers who buy properties in ${city}
-3. Commercial properties, HOAs, or property management companies in ${city}
-4. Luxury homeowners in high-income areas of ${city}
+1. Property Managers/Landlords with multiple rental units in ${location}, VA
+2. Local Real Estate Investors/Flippers who buy properties in ${location}
+3. Commercial properties, HOAs, or property management companies in ${location}
+4. Luxury homeowners in high-income areas of ${location}
 5. Recently listed or sold properties that may need renovation
 
 SEARCH STRATEGY:
-- Search for "${city} VA property management companies"
-- Search for "${city} Virginia real estate investors"
-- Search for "HOA management ${city} Virginia"
-- Search for "${category} contractor leads ${city} VA"
-- Search for "recently sold homes ${city} VA"
+- Search for "${location} VA property management companies"
+- Search for "${location} Virginia real estate investors"
+- Search for "HOA management ${location} Virginia"
+- Search for "${category} contractor leads ${location} VA"
+- Search for "recently sold homes ${location} VA"
 
 For each lead found, extract:
 - name: Contact name or company name
@@ -127,7 +171,7 @@ For each lead found, extract:
 - email: Email if publicly available, otherwise null
 - phone: Phone if publicly available, otherwise null
 - address: Property or business address if available
-- city: "${city}" (always use this exact value)
+- city: "${location}" (use the county name if searching by county)
 - zipCode: Virginia ZIP code (starts with 20, 22, or 23)
 - website: Website URL if available
 - company: Company name if applicable
@@ -276,30 +320,30 @@ function validateLeadType(type: string): FoundLead['leadType'] {
 export async function POST(request: NextRequest) {
   try {
     const body: FindLeadsRequest = await request.json();
-    const { city, category, leadCount = 10 } = body;
+    const { city, category, leadCount = 10, locationType = 'city' } = body;
 
     // Validate inputs
     if (!city || !category) {
       return NextResponse.json(
-        { error: 'City and category are required' },
+        { error: 'City/County and category are required' },
         { status: 400 }
       );
     }
 
-    // VA-Only Validator: Ensure city is in Virginia
-    const cityValidation = validateVirginiaCity(city);
-    if (!cityValidation.valid || !cityValidation.normalizedCity) {
+    // VA-Only Validator: Ensure location is in Virginia
+    const locationValidation = validateVirginiaLocation(city, locationType);
+    if (!locationValidation.valid || !locationValidation.normalizedLocation) {
       return NextResponse.json(
-        { error: `City "${city}" is not in Virginia service area` },
+        { error: `Location "${city}" is not in Virginia service area` },
         { status: 400 }
       );
     }
 
-    const normalizedCity = cityValidation.normalizedCity;
+    const normalizedLocation = locationValidation.normalizedLocation;
     const count = Math.min(Math.max(5, leadCount), 20); // Clamp to 5-20
 
     // Build and execute Gemini search
-    const prompt = buildLeadFinderPrompt(normalizedCity, category, count);
+    const prompt = buildLeadFinderPrompt(normalizedLocation, category, count, locationType);
     
     let rawResponse: string;
     try {
@@ -398,7 +442,7 @@ export async function POST(request: NextRequest) {
     // Return processed leads
     return NextResponse.json({
       success: true,
-      city: normalizedCity,
+      city: normalizedLocation,
       category,
       totalFound: processedLeads.length,
       leads: processedLeads,

@@ -53,6 +53,7 @@ import { cn } from '@/lib/utils';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { ALL_SERVICES, type ServiceType } from '@/types/lead';
 import { getTagColor, type LeadTag } from '@/lib/leads/tagging';
+import { VA_COUNTY_DISPLAY_NAMES } from '@/lib/leads/validation';
 
 /**
  * Virginia cities for dropdown selection.
@@ -312,7 +313,9 @@ function FoundLeadCard({
  */
 export function LeadFinder({ onLeadsSaved, className }: LeadFinderProps) {
   // Form state
-  const [selectedCity, setSelectedCity] = useState<string>('');
+  // NOTE: We track location type explicitly so users can search by city or county.
+  const [locationType, setLocationType] = useState<'city' | 'county'>('city');
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [leadCount, setLeadCount] = useState<number>(10);
   
@@ -336,8 +339,8 @@ export function LeadFinder({ onLeadsSaved, className }: LeadFinderProps) {
    * Handle search submission.
    */
   const handleSearch = useCallback(async () => {
-    if (!selectedCity || !selectedCategory) {
-      setError('Please select a city and service category');
+    if (!selectedLocation || !selectedCategory) {
+      setError('Please select a city or county and service category');
       return;
     }
 
@@ -352,9 +355,10 @@ export function LeadFinder({ onLeadsSaved, className }: LeadFinderProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          city: selectedCity,
+          city: selectedLocation,
           category: selectedCategory,
           leadCount,
+          locationType,
         }),
       });
 
@@ -374,7 +378,16 @@ export function LeadFinder({ onLeadsSaved, className }: LeadFinderProps) {
     } finally {
       setIsSearching(false);
     }
-  }, [selectedCity, selectedCategory, leadCount]);
+  }, [selectedLocation, selectedCategory, leadCount, locationType]);
+
+  /**
+   * Handle switching between City and County search.
+   * Reset selection to avoid mismatched location types.
+   */
+  const handleLocationTypeChange = useCallback((type: 'city' | 'county') => {
+    setLocationType(type);
+    setSelectedLocation('');
+  }, []);
 
   /**
    * Save a single lead to Supabase.
@@ -513,18 +526,45 @@ export function LeadFinder({ onLeadsSaved, className }: LeadFinderProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Location Type Toggle */}
+          <div className="flex items-center gap-2">
+            <Label>Search By</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={locationType === 'city' ? 'secondary' : 'ghost'}
+                onClick={() => handleLocationTypeChange('city')}
+              >
+                City
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={locationType === 'county' ? 'secondary' : 'ghost'}
+                onClick={() => handleLocationTypeChange('county')}
+              >
+                County
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* City Selection */}
+            {/* City / County Selection */}
             <div className="space-y-2">
-              <Label htmlFor="city">Virginia City</Label>
-              <Select value={selectedCity} onValueChange={setSelectedCity}>
-                <SelectTrigger id="city">
-                  <SelectValue placeholder="Select city..." />
+              <Label htmlFor="location">
+                {locationType === 'city' ? 'Virginia City' : 'Virginia County'}
+              </Label>
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger id="location">
+                  <SelectValue
+                    placeholder={locationType === 'city' ? 'Select city...' : 'Select county...'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {VA_CITIES.map(city => (
-                    <SelectItem key={city} value={city}>
-                      {city}
+                  {(locationType === 'city' ? VA_CITIES : VA_COUNTY_DISPLAY_NAMES).map((location) => (
+                    <SelectItem key={location} value={location}>
+                      {location}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -566,7 +606,7 @@ export function LeadFinder({ onLeadsSaved, className }: LeadFinderProps) {
           <div className="flex items-center gap-4">
             <Button
               onClick={handleSearch}
-              disabled={isSearching || !selectedCity || !selectedCategory}
+              disabled={isSearching || !selectedLocation || !selectedCategory}
               className="bg-majestic-teal hover:bg-majestic-teal/80"
             >
               {isSearching ? (

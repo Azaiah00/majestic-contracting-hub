@@ -81,6 +81,117 @@ export const ALL_VA_COUNTIES = [
 ];
 
 /**
+ * Full Virginia county list.
+ * This is used for county-based lead searches and validation.
+ * Note: Independent cities are not included here.
+ */
+export const VA_COUNTY_NAMES = [
+  'Accomack',
+  'Albemarle',
+  'Alleghany',
+  'Amelia',
+  'Amherst',
+  'Appomattox',
+  'Arlington',
+  'Augusta',
+  'Bath',
+  'Bedford',
+  'Bland',
+  'Botetourt',
+  'Brunswick',
+  'Buchanan',
+  'Buckingham',
+  'Campbell',
+  'Caroline',
+  'Carroll',
+  'Charles City',
+  'Charlotte',
+  'Chesterfield',
+  'Clarke',
+  'Craig',
+  'Culpeper',
+  'Cumberland',
+  'Dickenson',
+  'Dinwiddie',
+  'Essex',
+  'Fairfax',
+  'Fauquier',
+  'Floyd',
+  'Fluvanna',
+  'Franklin',
+  'Frederick',
+  'Giles',
+  'Gloucester',
+  'Goochland',
+  'Grayson',
+  'Greene',
+  'Greensville',
+  'Halifax',
+  'Hanover',
+  'Henrico',
+  'Henry',
+  'Highland',
+  'Isle of Wight',
+  'James City',
+  'King and Queen',
+  'King George',
+  'King William',
+  'Lancaster',
+  'Lee',
+  'Loudoun',
+  'Louisa',
+  'Lunenburg',
+  'Madison',
+  'Mathews',
+  'Mecklenburg',
+  'Middlesex',
+  'Montgomery',
+  'Nelson',
+  'New Kent',
+  'Northampton',
+  'Northumberland',
+  'Nottoway',
+  'Orange',
+  'Page',
+  'Patrick',
+  'Pittsylvania',
+  'Powhatan',
+  'Prince Edward',
+  'Prince George',
+  'Prince William',
+  'Pulaski',
+  'Rappahannock',
+  'Richmond',
+  'Roanoke',
+  'Rockbridge',
+  'Rockingham',
+  'Russell',
+  'Scott',
+  'Shenandoah',
+  'Smyth',
+  'Southampton',
+  'Spotsylvania',
+  'Stafford',
+  'Surry',
+  'Sussex',
+  'Tazewell',
+  'Warren',
+  'Washington',
+  'Westmoreland',
+  'Wise',
+  'Wythe',
+  'York',
+] as const;
+
+/**
+ * County display names with "County" suffix.
+ * This keeps the UI clear and avoids confusion with city names.
+ */
+export const VA_COUNTY_DISPLAY_NAMES = VA_COUNTY_NAMES.map(
+  (county) => `${county} County`
+);
+
+/**
  * Sample ZIP to county mapping for common areas.
  * This is a simplified mapping - production should use a full database.
  */
